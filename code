@@ -1,0 +1,118 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import KNNImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score
+
+# Load data
+df = pd.read_excel("C:/Users/svard/OneDrive/Desktop/data for cricket/AllOdicaptains.xlsx")
+
+# Data preprocessing
+
+# Extracting decade feature from 'Year' column
+df[['Start_Year', 'End_Year']] = df['Year'].str.split('-', expand=True)
+
+# Convert start and end years to numeric (handling NaN values)
+df['Start_Year'] = pd.to_numeric(df['Start_Year'], errors='coerce')
+df['End_Year'] = pd.to_numeric(df['End_Year'], errors='coerce')
+
+# Extract decade feature from 'Start_Year' column
+df['Decade'] = (df['Start_Year'] // 10) * 10
+
+# Drop the original 'Year' column
+df.drop(columns=['Year'], inplace=True)
+
+# Define numeric columns for imputation
+numeric_columns = ['Played', 'Won', 'Lost', 'Tied', 'No result', 'BestCaptain']
+X_imputation = df[numeric_columns]
+
+# Handling missing values with KNN Imputation
+imputer = KNNImputer(n_neighbors=5)
+X_imputed = imputer.fit_transform(X_imputation)
+
+# Assuming 'y' is the target variable column name in your DataFrame 'df'
+y = df['Win%']
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X_imputed, y, test_size=0.2, random_state=42)
+
+# Training and evaluating models
+
+# Logistic Regression
+lr = LogisticRegression()
+lr.fit(X_train, y_train)
+lr_pred = lr.predict(X_test)
+lr_accuracy = accuracy_score(y_test, lr_pred)
+lr_precision = precision_score(y_test, lr_pred, average='weighted')
+
+# Random Forest
+rf = RandomForestClassifier()
+rf.fit(X_train, y_train)
+rf_pred = rf.predict(X_test)
+rf_accuracy = accuracy_score(y_test, rf_pred)
+rf_precision = precision_score(y_test, rf_pred, average='weighted')
+
+# Support Vector Machine (SVM)
+svm = SVC()
+svm.fit(X_train, y_train)
+svm_pred = svm.predict(X_test)
+svm_accuracy = accuracy_score(y_test, svm_pred)
+svm_precision = precision_score(y_test, svm_pred, average='weighted')
+
+# Compare results
+results = pd.DataFrame({
+    'Algorithm': ['Logistic Regression', 'Random Forest', 'SVM'],
+    'Accuracy': [lr_accuracy, rf_accuracy, svm_accuracy],
+    'Precision': [lr_precision, rf_precision, svm_precision]
+})
+
+print(results)
+
+import matplotlib.pyplot as plt
+
+# Extracting results
+algorithm = results['Algorithm']
+accuracy = results['Accuracy']
+precision = results['Precision']
+
+# Plotting
+plt.figure(figsize=(10, 6))
+
+plt.subplot(1, 2, 1)
+plt.bar(algorithm, accuracy, color='green')
+plt.title('Accuracy Scores')
+plt.ylim(0, 1)
+plt.ylabel('Accuracy')
+
+plt.subplot(1, 2, 2)
+plt.bar(algorithm, precision, color='red')
+plt.title('Precision Scores')
+plt.ylim(0, 1)
+plt.ylabel('Precision')
+
+plt.tight_layout()
+plt.show()
+
+# Filter the DataFrame for captains with at least 50 matches played
+df_filtered = df[df['Played'] >= 50]
+
+# Sort the filtered DataFrame by Win% in descending order
+df_filtered_sorted = df_filtered.sort_values(by='Win%', ascending=False)
+
+# Display the top row of the sorted DataFrame, which represents the best captain by Win% with at least 50 matches played
+best_captain = df_filtered_sorted.head(1)
+print(best_captain)
+
+# Plotting Win% for captains with at least 50 matches played
+plt.figure(figsize=(8, 6))
+plt.bar(df_filtered_sorted['Name'], df_filtered_sorted['Win%'], color='blue')
+plt.title('Win% for Captains with at Least 50 Matches Played')
+plt.xlabel('Captain')
+plt.ylabel('Win%')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
